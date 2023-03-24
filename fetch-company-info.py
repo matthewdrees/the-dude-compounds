@@ -1,26 +1,28 @@
 """Fetch company information."""
+import json
 import os
 import requests
 import time
 
+from typing import List
 
-def fetch_weekly_company_prices():
 
-    # Get list of sp500 companies.
-    with open("sp500-companies.txt", "r") as f:
-        sp500_companies = f.read().splitlines()
+def fetch_weekly_company_prices(key: str, companies: List[str]):
 
     # Get list of companies we already have.
     companies_already_have = [os.path.splitext(c)[0] for c in os.listdir("weekly")]
-    print(companies_already_have)
 
-    companies_to_fetch = set(sp500_companies) - set(companies_already_have)
-    companies_to_fetch = list(set(sp500_companies) - set(companies_already_have))
+    companies_to_fetch = set(companies) - set(companies_already_have)
+    companies_to_fetch = list(set(companies) - set(companies_already_have))
     companies_to_fetch.sort()
-    print(companies_to_fetch)
-    print(len(companies_to_fetch))
+    ALPHAVANTGE_MAX_QUERIES_PER_DAY = 500
+    companies_to_fetch = companies_to_fetch[:ALPHAVANTGE_MAX_QUERIES_PER_DAY]
+    for i, ticker in enumerate(companies_to_fetch):
+        print(f"{i}. {ticker}")
+    print(
+        f"Companies total: {len(companies)}, already have: {len(companies_already_have)}, fetching: {len(companies_to_fetch)}"
+    )
 
-    key = "KEY HERE"
     # Fetch weekly prices for each company
     for company in companies_to_fetch:
         print(company)
@@ -33,4 +35,13 @@ def fetch_weekly_company_prices():
         time.sleep(12)
 
 
-fetch_weekly_company_prices()
+if __name__ == "__main__":
+
+    with open("config.json", "r") as f:
+        key = json.load(f)["alphavantage-api-key"]
+
+    # Get list of sp500 companies.
+    with open("healthcare-companies.txt", "r") as f:
+        companies = f.read().splitlines()
+
+    fetch_weekly_company_prices(key, companies)
