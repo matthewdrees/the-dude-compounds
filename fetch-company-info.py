@@ -1,13 +1,15 @@
 """Fetch company information."""
+import argparse
 import json
 import os
 import requests
 import time
+import pathlib
 
 from typing import List
 
 
-def fetch_weekly_company_prices(key: str, tickers: List[str]):
+def fetch_weekly_company_prices(key: str, tickers: List[str], fetch_limit):
 
     # Get list of companies we already have.
     companies_already_have = [os.path.splitext(c)[0] for c in os.listdir("weekly")]
@@ -15,8 +17,7 @@ def fetch_weekly_company_prices(key: str, tickers: List[str]):
     tickers_to_fetch = set(tickers) - set(companies_already_have)
     tickers_to_fetch = list(set(tickers) - set(companies_already_have))
     tickers_to_fetch.sort()
-    ALPHAVANTGE_MAX_QUERIES_PER_DAY = 500
-    tickers_to_fetch = tickers_to_fetch[:ALPHAVANTGE_MAX_QUERIES_PER_DAY]
+    tickers_to_fetch = tickers_to_fetch[:fetch_limit]
     for i, ticker in enumerate(tickers_to_fetch):
         print(f"{i}. {ticker}")
     print(
@@ -37,11 +38,32 @@ def fetch_weekly_company_prices(key: str, tickers: List[str]):
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser(
+        prog="fetch-company-info", description="Fetch company weekly stock price data"
+    )
+    parser.add_argument(
+        "--tickers_filename",
+        type=str,
+        default="indexes.txt",
+        help="text file of tickers to fetch",
+    )
+    parser.add_argument(
+        "--fetchlimit",
+        type=int,
+        nargs="?",
+        default=500,
+        help="number of companies to fetch",
+    )
+
+    args = parser.parse_args()
+    print(args)
+
     with open("config.json", "r") as f:
         key = json.load(f)["alphavantage-api-key"]
 
     # Get list of tickers.
-    with open("healthcare-companies.txt", "r") as f:
+    with open(args.tickers_filename, "r") as f:
         tickers = f.read().splitlines()
 
-    fetch_weekly_company_prices(key, tickers)
+    pathlib.Path(".").mkdir(exist_ok=True)
+    fetch_weekly_company_prices(key, tickers, args.fetchlimit)
