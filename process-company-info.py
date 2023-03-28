@@ -35,21 +35,25 @@ class CompanyInfo:
         self.weeks = year_over_year
 
 
+def get_company_info(ticker: str) -> CompanyInfo:
+    with open(f"weekly/{ticker}.json", "r") as f:
+        j = json.load(f)
+        weeks = week_dict_to_list(j["Weekly Adjusted Time Series"])
+    return CompanyInfo(ticker, weeks)
+
+
 def get_all_companies_info(tickers: List[str]) -> List[CompanyInfo]:
     all_companies_info = []
     for ticker in tickers:
-        with open(f"weekly/{ticker}.json", "r") as f:
-            j = json.load(f)
         try:
-            weeks = week_dict_to_list(j["Weekly Adjusted Time Series"])
+            all_companies_info.append(get_company_info(ticker))
         except KeyError:
             print(f"KeyError: {ticker}")
             continue
-        all_companies_info.append(CompanyInfo(ticker, weeks))
     return all_companies_info
 
 
-def print_history_stats(all_companies_info):
+def print_history_stats(all_companies_info: List[CompanyInfo]):
     all_num_weeks = [len(ci.weeks) for ci in all_companies_info]
     all_num_weeks.sort()
     print(f"Total companies: {len(all_num_weeks)}")
@@ -63,12 +67,40 @@ def print_history_stats(all_companies_info):
     print(f" - max: {all_num_weeks[len(all_num_weeks) - 1]/52.0}")
 
 
+def print_yoy_stats(
+    all_companies_info: List[CompanyInfo], benchmark_company_info: CompanyInfo
+):
+    benchmark_yoy = calculate_year_over_year(benchmark_company_info.weeks)
+    assert len(benchmark_company_info.weeks) > 1 + 5 * 52
+
+    ranges = [
+        [1, 0, 0, "Last week"],
+        [52, 0, 0, "Last year (weekly)"],
+        [156, 0, 0, "Last 3 years (weekly)"],
+        [260, 0, 0, "Last 5 years (weekly)"],
+    ]
+    for company_info in all_companies_info:
+        company_yoy = calculate_year_over_year(company_info.weeks)
+        for i, (yoy, bmyoy) in enumerate(zip(company_yoy, benchmark_yoy)):
+            for range in ranges:
+                if i < range[0]:
+                    range[2] += 1
+                    if yoy >= bmyoy:
+                        range[1] += 1
+
+    print("Year over year stats:")
+    for _, beat, total, title in ranges:
+        percent = 0.0
+        if total != 0:
+            percent = beat / total * 100.0
+        print(title + f": beats: {beat}, total: {total}, percent: {percent}")
+
+
 if __name__ == "__main__":
 
     with open("healthcare-companies.txt", "r") as f:
         tickers = f.read().splitlines()
         all_companies_info = get_all_companies_info(tickers)
     print_history_stats(all_companies_info)
-
-    # company_info = process_company_info("weekly/AADI.json")
-    # print(f"ADDI: {company_info.years_of_history}")
+    benchmark_company_info = get_company_info("VTI")
+    print_yoy_stats(all_companies_info, benchmark_company_info)
