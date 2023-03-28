@@ -1,9 +1,6 @@
 import copy
-import datetime
 import json
-import os
-import sys
-import pathlib
+import random
 from typing import List
 
 
@@ -96,6 +93,20 @@ def print_yoy_stats(
         print(title + f": beats: {beat}, total: {total}, percent: {percent}")
 
 
+def print_random_companies_from_those_that_are_less_than_one_year_old(
+    all_companies_info: List[CompanyInfo],
+):
+
+    young_companies_info = [x for x in all_companies_info if len(x.weeks) < 52]
+    num_random_companies = 12
+    print(
+        f"{len(young_companies_info)} companies < 1 year old. Picking {num_random_companies}:"
+    )
+    random.shuffle(young_companies_info)
+    for company in young_companies_info[:num_random_companies]:
+        print(company.ticker)
+
+
 if __name__ == "__main__":
 
     with open("healthcare-companies.txt", "r") as f:
@@ -104,3 +115,7 @@ if __name__ == "__main__":
     print_history_stats(all_companies_info)
     benchmark_company_info = get_company_info("VTI")
     print_yoy_stats(all_companies_info, benchmark_company_info)
+
+    print_random_companies_from_those_that_are_less_than_one_year_old(
+        all_companies_info
+    )
