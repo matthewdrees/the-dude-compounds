@@ -1,7 +1,6 @@
 """Fetch company information."""
 import argparse
 import json
-import os
 import requests
 import time
 import pathlib
@@ -9,10 +8,12 @@ import pathlib
 from typing import List
 
 
-def fetch_weekly_company_prices(key: str, tickers: List[str], fetch_limit):
+def fetch_weekly_company_prices(
+    key: str, dirname: pathlib.Path, tickers: List[str], fetch_limit
+):
 
     # Get list of companies we already have.
-    companies_already_have = [os.path.splitext(c)[0] for c in os.listdir("weekly")]
+    companies_already_have = [p.stem for p in dirname.iterdir()]
 
     tickers_to_fetch = set(tickers) - set(companies_already_have)
     tickers_to_fetch = list(set(tickers) - set(companies_already_have))
@@ -31,7 +32,8 @@ def fetch_weekly_company_prices(key: str, tickers: List[str], fetch_limit):
         r = requests.get(url)
         if r.status_code != requests.codes.ok:
             r.raise_for_status()
-        with open(f"weekly/{ticker}.json", "w") as f:
+        tickerfile = dirname / f"{ticker}.json"
+        with tickerfile.open("w") as f:
             f.write(r.text)
         time.sleep(12)
 
@@ -42,7 +44,7 @@ if __name__ == "__main__":
         prog="fetch-company-info", description="Fetch company weekly stock price data"
     )
     parser.add_argument(
-        "--tickers_filename",
+        "--tickers-filename",
         type=str,
         default="indexes.txt",
         help="text file of tickers to fetch",
@@ -56,7 +58,6 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    print(args)
 
     with open("config.json", "r") as f:
         key = json.load(f)["alphavantage-api-key"]
@@ -65,5 +66,6 @@ if __name__ == "__main__":
     with open(args.tickers_filename, "r") as f:
         tickers = f.read().splitlines()
 
-    pathlib.Path(".").mkdir(exist_ok=True)
-    fetch_weekly_company_prices(key, tickers, args.fetchlimit)
+    dirname = pathlib.Path(pathlib.Path(args.tickers_filename).stem)
+    dirname.mkdir(exist_ok=True)
+    fetch_weekly_company_prices(key, dirname, tickers, args.fetchlimit)
